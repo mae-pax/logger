@@ -42,6 +42,7 @@ func main() {
 	// c.CloseConsoleDisplay()
 	c.SetCaller(true, 2)
 	logger := c.InitLogger("time", "level", false, true)
+	sampleLogger := c.InitSampleLogger("time", "level", false, true, 0.2)
 
 	logger.Info("info level test")
 	logger.Error("dsdadadad level test", baselogger.WithError(errors.New("sabhksasas")))
@@ -49,6 +50,17 @@ func main() {
 	logger.Error("error message", baselogger.With("foo", "bar"))
 	logger.Warn("warn level test")
 	logger.Debug("debug level test")
+
+	sampleLogger.Info("test sampleLogger 1")
+	sampleLogger.Info("test sampleLogger 2")
+	sampleLogger.Info("test sampleLogger 3")
+	sampleLogger.Info("test sampleLogger 4")
+	sampleLogger.Info("test sampleLogger 5")
+	sampleLogger.Info("test sampleLogger 6")
+	sampleLogger.Info("test sampleLogger 7")
+	sampleLogger.Info("test sampleLogger 8")
+	sampleLogger.Info("test sampleLogger 9")
+	sampleLogger.Info("test sampleLogger 10")
 
 	// // time.Sleep(1 * time.Minute) // 避免程序结束太快，没有上传sentry
 

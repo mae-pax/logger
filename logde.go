@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"time"
 
@@ -35,10 +36,16 @@ var (
 			return zapcore.NewJSONEncoder(encoderConfig)
 		},
 	}
+	r = rand.New(rand.NewSource(time.Now().UnixNano()))
 )
 
 type Log struct {
 	L *zap.Logger
+}
+
+type SampleLog struct {
+	L          *zap.Logger
+	sampleRate float64
 }
 
 type LogOptions struct {
@@ -161,6 +168,21 @@ func (c *LogOptions) isOutput() bool {
 }
 
 func (c *LogOptions) InitLogger(timeKey, levelKey string, customEncodeTime, shortCaller bool) *Log {
+	logger, err := newLogger(c, timeKey, levelKey, customEncodeTime, shortCaller)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	return &Log{logger}
+}
+func (c *LogOptions) InitSampleLogger(timeKey, levelKey string, customEncodeTime, shortCaller bool, sampleRate float64) *SampleLog {
+	logger, err := newLogger(c, timeKey, levelKey, customEncodeTime, shortCaller)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
+	return &SampleLog{L: logger, sampleRate: sampleRate}
+}
+
+func newLogger(c *LogOptions, timeKey, levelKey string, customEncodeTime, shortCaller bool) (*zap.Logger, error) {
 	var (
 		logger             *zap.Logger
 		infoHook, warnHook io.Writer
@@ -266,7 +288,7 @@ func (c *LogOptions) InitLogger(timeKey, levelKey string, customEncodeTime, shor
 			Environment:      c.SentryConfig.Environment,
 		})
 		if err != nil {
-			fmt.Println(err)
+			return nil, err
 		}
 
 		sCore := NewSentryCore(cfg, sentryClient)
@@ -274,8 +296,7 @@ func (c *LogOptions) InitLogger(timeKey, levelKey string, customEncodeTime, shor
 			return zapcore.NewTee(core, sCore)
 		}))
 	}
-
-	return &Log{logger}
+	return logger, nil
 }
 
 func (c *LogOptions) sizeDivisionWriter(filename string) io.Writer {
@@ -345,6 +366,71 @@ func (log *Log) Debugf(format string, args ...interface{}) {
 func (log *Log) Fatalf(format string, args ...interface{}) {
 	logMsg := fmt.Sprintf(format, args...)
 	log.L.Fatal(logMsg)
+}
+
+func (log *SampleLog) Info(msg string, args ...zap.Field) {
+	if r.Float64() < log.sampleRate {
+		log.L.Info(msg, args...)
+	}
+}
+
+func (log *SampleLog) Error(msg string, args ...zap.Field) {
+	if r.Float64() < log.sampleRate {
+		log.L.Error(msg, args...)
+	}
+}
+
+func (log *SampleLog) Warn(msg string, args ...zap.Field) {
+	if r.Float64() < log.sampleRate {
+		log.L.Warn(msg, args...)
+	}
+}
+
+func (log *SampleLog) Debug(msg string, args ...zap.Field) {
+	if r.Float64() < log.sampleRate {
+		log.L.Debug(msg, args...)
+	}
+}
+
+func (log *SampleLog) Fatal(msg string, args ...zap.Field) {
+	if r.Float64() < log.sampleRate {
+		log.L.Fatal(msg, args...)
+	}
+}
+
+func (log *SampleLog) Infof(format string, args ...interface{}) {
+	if r.Float64() < log.sampleRate {
+		logMsg := fmt.Sprintf(format, args...)
+		log.L.Info(logMsg)
+	}
+}
+
+func (log *SampleLog) Errorf(format string, args ...interface{}) {
+	if r.Float64() < log.sampleRate {
+		logMsg := fmt.Sprintf(format, args...)
+		log.L.Error(logMsg)
+	}
+}
+
+func (log *SampleLog) Warnf(format string, args ...interface{}) {
+	if r.Float64() < log.sampleRate {
+		logMsg := fmt.Sprintf(format, args...)
+		log.L.Warn(logMsg)
+	}
+}
+
+func (log *SampleLog) Debugf(format string, args ...interface{}) {
+	if r.Float64() < log.sampleRate {
+		logMsg := fmt.Sprintf(format, args...)
+		log.L.Debug(logMsg)
+	}
+}
+
+func (log *SampleLog) Fatalf(format string, args ...interface{}) {
+	if r.Float64() < log.sampleRate {
+		logMsg := fmt.Sprintf(format, args...)
+		log.L.Fatal(logMsg)
+	}
 }
 
 func With(k string, v interface{}) zap.Field {
