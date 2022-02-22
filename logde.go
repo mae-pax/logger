@@ -66,6 +66,7 @@ type LogOptions struct {
 	SentryConfig  SentryLoggerConfig `json:"sentry_config" yaml:"sentry_config" toml:"sentry_config"`
 	Level         int8               `json:"level" yaml:"level" toml:"level"`
 	CloseDisplay  int                `json:"close_display" yaml:"close_display" toml:"close_display"`
+	SampleRate    float64            `json:"sample_rate,omitempty" yaml:"sample_rate,omitempty" toml:"sample_rate,omitempty"`
 	caller        bool
 	skip          int
 }
@@ -174,12 +175,12 @@ func (c *LogOptions) InitLogger(timeKey, levelKey string, customEncodeTime, shor
 	}
 	return &Log{logger}
 }
-func (c *LogOptions) InitSampleLogger(timeKey, levelKey string, customEncodeTime, shortCaller bool, sampleRate float64) *SampleLog {
+func (c *LogOptions) InitSampleLogger(timeKey, levelKey string, customEncodeTime, shortCaller bool) *SampleLog {
 	logger, err := newLogger(c, timeKey, levelKey, customEncodeTime, shortCaller)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-	return &SampleLog{L: logger, sampleRate: sampleRate}
+	return &SampleLog{L: logger, sampleRate: c.SampleRate}
 }
 
 func newLogger(c *LogOptions, timeKey, levelKey string, customEncodeTime, shortCaller bool) (*zap.Logger, error) {
