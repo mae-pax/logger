@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"strconv"
 	"time"
@@ -9,6 +10,28 @@ import (
 	baselogger "github.com/mae-pax/logger"
 	"github.com/spf13/pflag"
 )
+
+type UTCTime time.Time
+
+func (t *UTCTime) UnmarshalJSON(b []byte) error {
+	now, err := time.ParseInLocation(`"2006-01-02 15:04:05"`, string(b), time.UTC)
+	*t = UTCTime(now)
+	return err
+}
+
+func (t UTCTime) MarshalJSON() ([]byte, error) {
+	b := make([]byte, 0, len("2006-01-02 15:04:05")+2)
+	b = append(b, '"')
+	b = time.Time(t).AppendFormat(b, "2006-01-02 15:04:05")
+	b = append(b, '"')
+	return b, nil
+}
+
+type InfoServerStruct struct {
+	ReqType  string  `gorm:"column:ReqType"`
+	ReqTime  UTCTime `gorm:"column:ReqTime;type:DateTime;"`
+	BuildVer string  `gorm:"column:BuildVer"`
+}
 
 var (
 	confPath string
@@ -39,10 +62,12 @@ func main() {
 	// }
 
 	c := baselogger.NewFromYaml(confPath)
-	// c.CloseConsoleDisplay()
-	c.SetCaller(true, 2)
-	logger := c.InitLogger("time", "level", false, true)
-	sampleLogger := c.InitSampleLogger("time", "level", false, true, 0.2)
+	c.CloseConsoleDisplay()
+	c.SetCaller(false, 2)
+	logger := c.InitLogger("time", "level", false, false)
+
+	c.SampleRate = 0.5
+	sampleLogger := c.InitSampleLogger("time", "level", false, true)
 
 	logger.Info("info level test")
 	logger.Error("dsdadadad level test", baselogger.WithError(errors.New("sabhksasas")))
@@ -50,6 +75,12 @@ func main() {
 	logger.Error("error message", baselogger.With("foo", "bar"))
 	logger.Warn("warn level test")
 	logger.Debug("debug level test")
+	// mock
+	rawLog := `{"ReqType":"req","ReqTime":"2024-12-31 07:50:00","BuildVer":"0.0.1"}`
+	var logData InfoServerStruct
+	_ = json.Unmarshal([]byte(rawLog), &logData)
+	// write interface{} with json format
+	logger.Sugar().Infow("", baselogger.KeysAndValues(logData)...)
 
 	sampleLogger.Info("test sampleLogger 1")
 	sampleLogger.Info("test sampleLogger 2")

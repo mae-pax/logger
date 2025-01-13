@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"math/rand"
 	"os"
+	"reflect"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -369,6 +370,10 @@ func (log *Log) Fatalf(format string, args ...interface{}) {
 	log.L.Fatal(logMsg)
 }
 
+func (log *Log) Sugar() *zap.SugaredLogger {
+	return log.L.Sugar()
+}
+
 func (log *SampleLog) Info(msg string, args ...zap.Field) {
 	if r.Float64() < log.sampleRate {
 		log.L.Info(msg, args...)
@@ -434,10 +439,39 @@ func (log *SampleLog) Fatalf(format string, args ...interface{}) {
 	}
 }
 
+func (log *SampleLog) Sugar() *zap.SugaredLogger {
+	return log.L.Sugar()
+}
+
 func With(k string, v interface{}) zap.Field {
 	return zap.Any(k, v)
 }
 
 func WithError(err error) zap.Field {
 	return zap.NamedError("error", err)
+}
+
+func KeysAndValues(data interface{}) []interface{} {
+	result := []interface{}{}
+
+	switch v := data.(type) {
+	case map[string]interface{}:
+		for key, value := range v {
+			result = append(result, key, value)
+		}
+	default:
+		val := reflect.ValueOf(v)
+		if val.Kind() == reflect.Struct {
+			typ := val.Type()
+			for i := 0; i < val.NumField(); i++ {
+				fieldName := typ.Field(i).Name
+				fieldValue := val.Field(i).Interface()
+				result = append(result, fieldName, fieldValue)
+			}
+		} else {
+			panic("Unsupported type: only map[string]interface{} or struct are supported")
+		}
+	}
+
+	return result
 }
