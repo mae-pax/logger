@@ -306,7 +306,7 @@ func (c *LogOptions) sizeDivisionWriter(filename string) io.Writer {
 		Filename:   filename,
 		MaxSize:    c.MaxSize,
 		MaxBackups: c.MaxBackups,
-		MaxAge:     c.MaxSize,
+		MaxAge:     c.MaxAge,
 		Compress:   c.Compress,
 	}
 	return hook
